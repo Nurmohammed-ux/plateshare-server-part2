@@ -4,10 +4,42 @@ require("dotenv").config();
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
+const { initializeApp, cert } = require("firebase-admin/app");
+const { getAuth } = require("firebase-admin/auth");
+
+// console.log("Admin object:", admin);
+// console.log("Credential object:", admin.credential);
+
+const serviceAccount = require("./plateshare-client-firebase-adminsdk.json");
+
+initializeApp({
+  credential: cert(serviceAccount),
+});
 
 // middleware
 app.use(cors());
 app.use(express.json());
+
+const verifyFirebaseToken = async (req, res, next) => {
+  const authorization = req.headers.authorization;
+  // console.log(authorization);
+  if (!authorization) {
+    return res
+      .status(401)
+      .send({ message: "Unauthorized access: No token provided" });
+  }
+  const token = authorization.split(" ")[1];
+  try {
+    const decoded = await getAuth().verifyIdToken(token);
+    req.token_email = decoded.email;
+    next();
+  } catch (error) {
+    console.error("Firebase Auth Error:", error.message);
+    return res
+      .status(401)
+      .send({ message: "Unauthorized access: Invalid provided" });
+  }
+};
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.jd5uu0i.mongodb.net/?appName=Cluster0`;
 
@@ -31,7 +63,11 @@ async function run() {
     const foodsCollection = database.collection("foods");
     const usersCollection = database.collection("users");
 
-    app.post("/foods", async (req, res) => {
+    app.post("/foods", verifyFirebaseToken, async (req, res) => {
+      const email = req.query.email;
+      if (email !== req.token_email) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
       const newFood = req.body;
       const result = await foodsCollection.insertOne(newFood);
       res.send(result);
@@ -54,7 +90,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("foods/:id", async (req, res) => {
+    app.delete("/foods/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await foodsCollection.deleteOne(query);

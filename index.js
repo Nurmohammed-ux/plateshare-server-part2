@@ -7,9 +7,6 @@ const port = process.env.PORT || 3000;
 const { initializeApp, cert } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 
-// console.log("Admin object:", admin);
-// console.log("Credential object:", admin.credential);
-
 const serviceAccount = require("./plateshare-client-firebase-adminsdk.json");
 
 initializeApp({
@@ -64,8 +61,7 @@ async function run() {
     const usersCollection = database.collection("users");
 
     app.post("/foods", verifyFirebaseToken, async (req, res) => {
-      const email = req.query.email;
-      if (email !== req.token_email) {
+      if (req.body.donator.email !== req.token_email) {
         return res.status(403).send({ message: "Forbidden access" });
       }
       const newFood = req.body;
@@ -84,9 +80,28 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/foods/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await foodsCollection.findOne(query);
+      res.send(result);
+    });
+
     app.get("/featuredFoods", async (req, res) => {
       const cursor = foodsCollection.find().sort({ quantity: -1 }).limit(6);
       const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.patch("/foods/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedFood = req.body;
+      const query = { _id: new ObjectId(id) };
+
+      const updateDoc = {
+        $set: updatedFood,
+      };
+      const result = await foodsCollection.updateOne(query, updateDoc);
       res.send(result);
     });
 

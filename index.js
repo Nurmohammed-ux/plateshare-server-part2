@@ -61,9 +61,11 @@ async function run() {
     const usersCollection = database.collection("users");
 
     app.post("/foods", verifyFirebaseToken, async (req, res) => {
-      if (req.body.donator.email !== req.token_email) {
+      const email = req.body.donator.email;
+      if (email !== req.token_email) {
         return res.status(403).send({ message: "Forbidden access" });
       }
+
       const newFood = req.body;
       const result = await foodsCollection.insertOne(newFood);
       res.send(result);
@@ -93,10 +95,18 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/foods/:id", async (req, res) => {
+    app.patch("/foods/:id", verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const updatedFood = req.body;
       const query = { _id: new ObjectId(id) };
+      const food = await foodsCollection.findOne(query);
+      if (!food) {
+        return res.status(404).send({ message: "Food not found" });
+      }
+
+      if (food.donator.email !== req.token_email) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
 
       const updateDoc = {
         $set: updatedFood,

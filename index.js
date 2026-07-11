@@ -94,6 +94,27 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/myFoods", verifyFirebaseToken, async (req, res) => {
+      const email = req.query.email;
+      if (!email) {
+        return res.status(400).send({ message: "Email is required" });
+      }
+
+      if (email !== req.token_email) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+
+      const query = {
+        "donator.email": email,
+      };
+
+      const result = await foodsCollection
+        .find(query)
+        .sort({ quantity: -1 })
+        .toArray();
+      res.send(result);
+    });
+
     app.patch("/foods/:id", verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const updatedFood = req.body;

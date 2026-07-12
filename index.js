@@ -1,14 +1,13 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { initializeApp, cert } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const port = process.env.PORT || 3000;
-
 const app = express();
 
+// middleware
 app.use(cors());
 app.use(express.json());
 
@@ -304,6 +303,18 @@ app.post("/foodRequests", verifyFirebaseToken, async (req, res) => {
       });
     }
     const result = await requestCollection.insertOne(newRequest);
+    res.send(result);
+  } catch (err) {
+    res.status(500).send({
+      message: err.message,
+    });
+  }
+});
+
+app.get("/foodRequest", async (req, res) => {
+  try {
+    const foodId = new ObjectId(req.query.foodId);
+    const result = await requestCollection.find({ foodId: foodId }).toArray();
     res.send(result);
   } catch (err) {
     res.status(500).send({

@@ -88,6 +88,13 @@ app.get("/", (req, res) => {
   res.send("PlateShare Server Running");
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "PlateShare API is running",
+  });
+});
+
 /* Get All Foods */
 
 app.get("/foods", async (req, res) => {
@@ -180,8 +187,13 @@ app.post("/foods", verifyFirebaseToken, async (req, res) => {
 app.get("/myFoods", verifyFirebaseToken, async (req, res) => {
   try {
     await connectDB();
-
     const email = req.query.email;
+
+    if (!email) {
+      return res.status(400).send({
+        message: "Email is required",
+      });
+    }
 
     if (email !== req.token_email) {
       return res.status(403).send({
@@ -278,7 +290,7 @@ app.delete("/foods/:id", verifyFirebaseToken, async (req, res) => {
 
 /* ---------------- Export ---------------- */
 
-module.exports = app;
-// app.listen(port, () => {
-//   console.log(`PlateShare app listening on port ${port}`);
-// });
+// module.exports = app;
+app.listen(port, () => {
+  console.log(`PlateShare app listening on port ${port}`);
+});

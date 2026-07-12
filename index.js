@@ -68,6 +68,7 @@ const client = new MongoClient(uri, {
 
 let foodsCollection;
 let usersCollection;
+let requestCollection;
 
 async function connectDB() {
   if (!foodsCollection) {
@@ -79,6 +80,7 @@ async function connectDB() {
 
     foodsCollection = database.collection("foods");
     usersCollection = database.collection("users");
+    requestCollection = database.collection("requests");
   }
 }
 
@@ -280,6 +282,28 @@ app.delete("/foods/:id", verifyFirebaseToken, async (req, res) => {
 
     const result = await foodsCollection.deleteOne(query);
 
+    res.send(result);
+  } catch (err) {
+    res.status(500).send({
+      message: err.message,
+    });
+  }
+});
+
+// Get request api
+app.post("/foodRequests", verifyFirebaseToken, async (req, res) => {
+  try {
+    const email = req.body.userEmail;
+    const newRequest = {
+      ...req.body,
+      foodId: new ObjectId(req.body.foodId),
+    };
+    if (email !== req.token_email) {
+      return res.status(403).send({
+        message: "Forbidden access",
+      });
+    }
+    const result = await requestCollection.insertOne(newRequest);
     res.send(result);
   } catch (err) {
     res.status(500).send({

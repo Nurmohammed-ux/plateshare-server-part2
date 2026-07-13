@@ -42,7 +42,6 @@ const verifyFirebaseToken = async (req, res, next) => {
 
   try {
     const decoded = await getAuth().verifyIdToken(token);
-
     req.token_email = decoded.email;
 
     next();
@@ -311,7 +310,7 @@ app.post("/foodRequests", verifyFirebaseToken, async (req, res) => {
   }
 });
 
-app.get("/foodRequest", async (req, res) => {
+app.get("/foodRequests", async (req, res) => {
   try {
     const foodId = new ObjectId(req.query.foodId);
     const result = await requestCollection.find({ foodId: foodId }).toArray();
@@ -319,6 +318,42 @@ app.get("/foodRequest", async (req, res) => {
   } catch (err) {
     res.status(500).send({
       message: err.message,
+    });
+  }
+});
+
+app.patch("/foodRequests/:id", verifyFirebaseToken, async (req, res) => {
+  try {
+    await connectDB();
+
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+
+    const request = await requestCollection.findOne(query);
+
+    if (!request) {
+      return res.status(404).send({
+        message: "There is no food request",
+      });
+    }
+
+    if (request.donatorEmail !== req.token_email) {
+      return res.status(403).send({
+        message: "Forbidden access",
+      });
+    }
+
+    const result = await requestCollection.updateOne(query, {
+      $set: {
+        status: req.body.status,
+      },
+    });
+    res.send(result);
+  } catch (err) {
+    console.error("PATCH ERROR:", err);
+    res.status(500).send({
+      message: err.message,
+      stack: err.stack,
     });
   }
 });

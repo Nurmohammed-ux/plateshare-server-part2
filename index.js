@@ -322,6 +322,29 @@ app.get("/foodRequests", async (req, res) => {
   }
 });
 
+app.get("/myFoodRequests", verifyFirebaseToken, async (req, res) => {
+  try {
+    await connectDB();
+
+    const userEmail = req.query.userEmail;
+
+    if (userEmail !== req.token_email) {
+      return res.status(403).send({
+        message: "Forbidden access",
+      });
+    }
+
+    const result = await requestCollection.find({ userEmail }).toArray();
+
+    res.send(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({
+      message: err.message,
+    });
+  }
+});
+
 app.patch("/foodRequests/:id", verifyFirebaseToken, async (req, res) => {
   try {
     await connectDB();
@@ -354,6 +377,33 @@ app.patch("/foodRequests/:id", verifyFirebaseToken, async (req, res) => {
     res.status(500).send({
       message: err.message,
       stack: err.stack,
+    });
+  }
+});
+
+app.delete("/foodRequests/:id", verifyFirebaseToken, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const request = await requestCollection.findOne(query);
+
+    if (!request) {
+      return res.status(404).send({
+        message: "There is no food request",
+      });
+    }
+
+    if (request.userEmail !== req.token_email) {
+      return res.status(403).send({
+        message: "Forbidden access",
+      });
+    }
+
+    const result = await requestCollection.deleteOne(query);
+    res.send(result);
+  } catch (err) {
+    res.status(500).send({
+      message: err.message,
     });
   }
 });
